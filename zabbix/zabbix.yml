@@ -1,0 +1,55 @@
+version: '3.7'
+services:
+  postgresql-server:
+    image: postgres:latest
+    container_name: postgresql-server
+    environment:
+      POSTGRES_USER: 'zabbix'
+      POSTGRES_PASSWORD: 'zabbix_db_password'
+      POSTGRES_DB: 'zabbix'
+    networks:
+      - zabbix-net
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:latest
+    container_name: zabbix-server
+    depends_on:
+      - postgresql-server
+    environment:
+      DB_SERVER_HOST: "postgresql-server"
+      POSTGRES_PASSWORD: 'zabbix_db_password'
+      POSTGRES_USER: 'zabbix'
+      POSTGRES_DB: 'zabbix'
+    networks:
+      - zabbix-net
+  zabbix-web-nginx-pgsql:
+    image: zabbix/zabbix-web-nginx-pgsql:latest
+    container_name: zabbix-web
+    depends_on:
+      - postgresql-server
+      - zabbix-server
+    environment:
+      DB_SERVER_HOST: "postgresql-server"
+      POSTGRES_USER: 'zabbix'
+      POSTGRES_PASSWORD: 'zabbix_db_password'
+      POSTGRES_DB: 'zabbix'
+      ZBX_SERVER_HOST: 'zabbix-server'
+    ports:
+      - '80:8080'
+      - '443:8443'
+    networks:
+      - zabbix-net
+  zabbix-agent:
+    image: zabbix/zabbix-agent:latest
+    container_name: zabbix-agent
+    environment:
+      ZBX_HOSTNAME: "zabbix-agent"
+      ZBX_SERVER_HOST: 'zabbix-server'
+    privileged: true
+    networks:
+      - zabbix-net
+    volumes:
+      - /:/rootfs
+      - /var/run:/var/run
+networks:
+  zabbix-net:
+    driver: bridge
